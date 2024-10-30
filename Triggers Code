@@ -1,0 +1,80 @@
+Trigger Code
+This single trigger handles multiple events (insert, update, delete, etc.) for the Account object.
+
+trigger AccountTrigger on Account (before insert, before update, before delete, after insert, after update, after delete, after undelete) {
+    AccountTriggerHandler handler = new AccountTriggerHandler();
+
+    if (Trigger.isBefore) {
+        if (Trigger.isInsert) handler.beforeInsert(Trigger.new);
+        if (Trigger.isUpdate) handler.beforeUpdate(Trigger.new, Trigger.oldMap);
+        if (Trigger.isDelete) handler.beforeDelete(Trigger.old);
+    }
+
+    if (Trigger.isAfter) {
+        if (Trigger.isInsert) handler.afterInsert(Trigger.new);
+        if (Trigger.isUpdate) handler.afterUpdate(Trigger.new, Trigger.oldMap);
+        if (Trigger.isDelete) handler.afterDelete(Trigger.old);
+        if (Trigger.isUndelete) handler.afterUndelete(Trigger.new);
+    }
+}
+
+
+Trigger Handler Class
+This class contains the business logic. Each method corresponds to a different trigger event.
+
+public class AccountTriggerHandler {
+
+    public void beforeInsert(List<Account> newAccounts) {
+        for (Account acc : newAccounts) {
+            if (String.isBlank(acc.Name)) {
+                acc.addError('Account Name is required.');
+            }
+        }
+    }
+
+    public void beforeUpdate(List<Account> newAccounts, Map<Id, Account> oldAccountMap) {
+        for (Account acc : newAccounts) {
+            Account oldAcc = oldAccountMap.get(acc.Id);
+            if (acc.Name != oldAcc.Name) {
+                System.debug('Account Name has been updated.');
+            }
+        }
+    }
+
+    public void beforeDelete(List<Account> oldAccounts) {
+        for (Account acc : oldAccounts) {
+            System.debug('Account to be deleted: ' + acc.Name);
+        }
+    }
+
+    public void afterInsert(List<Account> newAccounts) {
+        List<Contact> contactsToInsert = new List<Contact>();
+        for (Account acc : newAccounts) {
+            contactsToInsert.add(new Contact(
+                LastName = 'Primary Contact',
+                AccountId = acc.Id
+            ));
+        }
+        if (!contactsToInsert.isEmpty()) {
+            insert contactsToInsert;
+        }
+    }
+
+    public void afterUpdate(List<Account> newAccounts, Map<Id, Account> oldAccountMap) {
+        for (Account acc : newAccounts) {
+            System.debug('Account updated: ' + acc.Name);
+        }
+    }
+
+    public void afterDelete(List<Account> oldAccounts) {
+        for (Account acc : oldAccounts) {
+            System.debug('Deleted Account: ' + acc.Name);
+        }
+    }
+
+    public void afterUndelete(List<Account> newAccounts) {
+        for (Account acc : newAccounts) {
+            System.debug('Restored Account: ' + acc.Name);
+        }
+    }
+}
